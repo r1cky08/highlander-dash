@@ -75,6 +75,8 @@
   #nomap { position: absolute; left: 40px; right: 40px; top: 50%; transform: translateY(-50%); text-align: center; color: var(--dim); font-size: 17px; line-height: 1.55; display: none; }
   #nomap b { display: block; color: var(--txt, #e6e7e9); font-size: 24px; font-weight: 400; margin-bottom: 10px; letter-spacing: .5px; }
   /* Shared build: no street data, so the map buttons are hidden */
+  /* Shared build: options for features that need data appear once that data exists */
+  body.nomapdata .mapOnly, body:not(.hasff) #dkTeam { display: none !important; }
   body.nomapdata #findBtn, body.nomapdata #zoom, body.nomapdata #road, body.nomapdata #dest, body.nomapdata #attrib { display: none !important; }
   #attrib { position: absolute; right: 22px; bottom: 14px; font-size: 10px; color: #55585d; pointer-events: none; }
 
@@ -506,6 +508,11 @@
   #stage.noMap #dcard { display: flex; }
   #dcard .db { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; border-right: 1px solid var(--line); box-sizing: border-box; padding: 0 12px; }
   #dcard .db:last-child { border-right: 0; }
+  /* Readout card (map hidden): no card or dividers; a soft accent glow behind each reading instead */
+  #stage.noMap #dcard, body.light #stage.noMap #dcard { background: none; border-color: transparent; box-shadow: none; }
+  #dcard .db { border-right: 0; position: relative; isolation: isolate; }
+  #dcard .db::before { content: ''; position: absolute; left: -6%; right: -6%; top: 14%; bottom: 14%; z-index: -1; pointer-events: none;
+    background: radial-gradient(closest-side, rgba(var(--ar),.22) 0%, rgba(var(--ar),.08) 50%, rgba(0,0,0,0) 100%); }
   #dcard .dl { font-size: 13px; letter-spacing: 3px; color: var(--faint); font-weight: 500; }
   #dcard .dv { font-size: 76px; font-weight: 200; line-height: 1; letter-spacing: -2px; }
   #dcard .ds { font-size: 15px; letter-spacing: 3px; color: var(--dim); min-height: 18px; }
@@ -531,6 +538,14 @@
   #stage.noMap.noMedia #dcard .tp.fr { right: 60px; top: 30px; }
   #stage.noMap.noMedia #dcard .tp.rl { left: 60px; bottom: 30px; }
   #stage.noMap.noMedia #dcard .tp.rr { right: 60px; bottom: 30px; }
+  /* No cards: the same glow behind heading, elevation and each tire, and a larger one behind the speed */
+  #stage.noMap.noMedia #dcard { overflow: visible; }
+  #stage.noMap.noMedia #dcard .db::before { left: -30px; right: -30px; top: -30px; bottom: -30px; }
+  #stage.noMap.noMedia #dcard .tp { isolation: isolate; }
+  #stage.noMap.noMedia #dcard .tp::before { content: ''; position: absolute; left: 30px; right: 30px; top: -24px; bottom: -24px; z-index: -1; pointer-events: none;
+    background: radial-gradient(closest-side, rgba(var(--ar),.18) 0%, rgba(var(--ar),.06) 50%, rgba(0,0,0,0) 100%); }
+  #stage.noMap.noMedia #dcard::before { content: ''; position: absolute; left: 280px; width: 720px; top: -60px; height: 470px; z-index: -1; pointer-events: none;
+    background: radial-gradient(closest-side, rgba(var(--ar),.28) 0%, rgba(var(--ar),.10) 50%, rgba(0,0,0,0) 100%); }
   .opt.on { background: var(--text); color: var(--bg); border-color: var(--text); }
 
   /* ---------- Previous / next buttons for the hero card (a tap on a scrolling list does not flip it) ---------- */
@@ -757,6 +772,7 @@
     <button class="dk" onclick="openMaps()"><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.6"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4Z"></path><path d="M9 4v13.5M15 6.5V20"></path></svg>Maps</button>
     <button class="dk" onclick="openRadio()"><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.6"><rect x="3" y="8" width="18" height="12" rx="2"></rect><path d="m7 8 9-5"></path><circle cx="15.5" cy="14" r="2.5"></circle><path d="M6.5 12h4M6.5 16h4"></path></svg>Radio</button>
     <button class="dk" onclick="open1(['com.syu.bt'])"><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.6"><path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A17 17 0 0 1 3 5a2 2 0 0 1 2-2Z"></path></svg>Phone</button>
+    <button class="dk" id="dkTeam" onclick="openTeam()"><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.6"><ellipse cx="12" cy="12" rx="9" ry="6" transform="rotate(-35 12 12)"></ellipse><path d="m9.5 14.5 5-5M10.5 11l2.5 2.5M12 9.5l2.5 2.5"></path></svg>Team</button>
     <button class="dk" onclick="openSettings()"><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.6"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"></path><circle cx="16" cy="7" r="2.2"></circle><circle cx="8" cy="17" r="2.2"></circle></svg>Settings</button>
     <button class="dk" onclick="openDrawer()"><svg class="i" width="26" height="26" viewBox="0 0 24 24" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>Apps</button>
   </div>
@@ -885,6 +901,22 @@
           <span id="sLowV" style="min-width:70px;text-align:center;font-size:18px"></span>
           <button class="round" style="width:44px;height:44px" aria-label="Raise" onclick="sBump(1)"><svg class="i" width="18" height="18" viewBox="0 0 24 24" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg></button></div></div>
       <div class="sr"><div class="l">Sensors<i>Assign each Bluetooth sensor to its wheel and see what has been heard</i></div><div class="c"><button class="opt" onclick="closeSettings(); openTires()">Set up tires</button></div></div>
+
+      <div class="mapOnly">
+      <div class="sg">SAVED PLACES</div>
+      <div class="sr"><div class="l">Quick places<i>They show at the top of Search; one tap starts the route. Only the name is shown, not the address</i></div><div class="c"><button class="opt" onclick="openSave(null)">Save where I am now</button></div></div>
+      <div id="sSaved"></div>
+
+      <div class="sg">NAVIGATION</div>
+      <div class="sr"><div class="l">Voice guidance<i>Spoken turn instructions</i></div><div class="c"><button class="tg" id="sVoice" aria-label="Voice guidance" onclick="nav.toggleMute(); renderSettings()"></button></div></div>
+      <div class="sr"><div class="l">Live traffic<i id="sTrafSub">Traffic-adjusted arrival time while navigating, when the unit has internet</i></div><div class="c"><button class="tg" id="sTraf" aria-label="Live traffic" onclick="store.set('traffic', nav.trafficOn() ? '0' : '1'); renderSettings()"></button></div></div>
+      <div class="sr"><div class="l">TomTom key<i>Free key from developer.tomtom.com. Not needed if one was built in</i></div><div class="c"><input id="sTtKey" type="text" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Paste key" style="width:300px;height:44px;border-radius:22px;border:1px solid #2a2c30;background:#141517;color:#e6e7e9;padding:0 18px;font-size:15px" onchange="store.set('ttKey', this.value.trim()); renderSettings()"></div></div>
+      <div class="sr"><div class="l">3D map<i>Angled view with buildings. Off shows the flat north-up map</i></div><div class="c"><button class="tg" id="s3d" aria-label="3D map" onclick="map.toggle3d(); renderSettings()"></button></div></div>
+      <div class="sr"><div class="l">Brand signs<i>A floating logo above known stores and restaurants in the 3D map</i></div><div class="c"><button class="tg" id="sBrand" aria-label="Brand signs" onclick="map.toggleBrand(); renderSettings()"></button></div></div>
+
+      </div>
+      <div class="sg">FANTASY FOOTBALL</div>
+      <div class="sr"><div class="l">Sleeper league<i>Optional. Enter your Sleeper username to add a Team button and matchup, standings and news faces to the big card</i></div><div class="c"><button class="opt" onclick="closeSettings(); openTeam(); ff.showSetup(true)">Set up</button></div></div>
 
       <div class="sg">SYSTEM</div>
       <div class="sr"><div class="l">Song info access<i>Lets the now playing card read what is playing</i></div><div class="c"><button class="opt" onclick="Car.requestMediaAccess()">Allow</button></div></div>
@@ -1111,7 +1143,7 @@ applyTop();
 var POINTS = ['N','NE','E','SE','S','SW','W','NW'];
 var gps = { mph: null, bearing: null, ft: null };
 var BASE = ['speed', 'heading', 'elevation'];
-var FACES = [];   // fantasy football faces are not in the shared build (see the guide to add your own league)
+var FACES = [['matchup', 'Matchup'], ['standings', 'Standings'], ['lineup', 'My lineup'], ['news', 'Player news'], ['season', 'Season']];   // shown once a Sleeper league is set up
 var faceOn; try { faceOn = JSON.parse(store.get('faces', '["matchup","standings","news","season"]')); } catch (e) { faceOn = ['matchup', 'standings', 'news', 'season']; }
 var heroKind = store.get('hero', 'speed'), lastFace = '';
 function heroList() {
@@ -1142,7 +1174,7 @@ function toggleFace(k) {
 }
 function drawFaces() {
   var box = $('faces'); box.innerHTML = '';
-  FACES.forEach(function (f) {
+  if (window.ff && store.get('ffUser', '')) FACES.forEach(function (f) {
     var b = document.createElement('button'); b.className = 'chip' + (faceOn.indexOf(f[0]) >= 0 ? ' on' : ''); b.textContent = f[1];
     b.onclick = function () { toggleFace(f[0]); }; box.appendChild(b);
   });
@@ -3270,8 +3302,9 @@ var ff = (function () {
   setInterval(function () { refresh(false); refreshNews(false); }, 5000);
   return { refresh: refresh, render: render, ready: ready, face: faceHtml, showSetup: showSetup, saveSetup: saveSetup, refreshNews: refreshNews };
 })();
+function syncFF() { document.body.classList.toggle('hasff', !!store.get('ffUser', '')); drawFaces && drawFaces(); }
 function openTeam() { $('team').classList.add('open'); ff.render(); ff.refresh(true); }
-function closeTeam() { $('team').classList.remove('open'); ff.showSetup(false); }
+function closeTeam() { $('team').classList.remove('open'); ff.showSetup(false); syncFF(); }
 
 // ---------- Launching apps ----------
 function open1(pkgs) {
@@ -3508,7 +3541,14 @@ function sBump(d) { tires.bump(d); renderSettings(); }
 function renderSettings() {
   renderSavedSettings();
   $('sLowV').textContent = tires.low() + ' psi';
-  // Navigation settings are not in the shared build (no map data).
+  if (streets.available) {
+  $('sVoice').classList.toggle('on', store.get('navMute', '0') !== '1');
+  $('s3d').classList.toggle('on', map.is3d());
+  $('sBrand').classList.toggle('on', map.brandOn());
+  $('sTraf').classList.toggle('on', nav.trafficOn());
+  var ts = nav.trafficStatus(); $('sTrafSub').textContent = 'Traffic-adjusted arrival time while navigating, when the unit has internet' + (ts ? '. ' + ts : '');
+  if (document.activeElement !== $('sTtKey')) $('sTtKey').value = store.get('ttKey', '');
+  }
   if (document.activeElement !== $('sWord')) $('sWord').value = store.get('word', '');
   applyCards();
   applyTop();
@@ -3790,6 +3830,8 @@ function checkAutoStart() {
 window.onResumeFromAndroid = function () { showDate(); updateWeather(); checkAutoStart(); fit(); map.redraw(); onMedia(JSON.parse(Car.media() || '{}')); };
 
 fit();
+ff.refresh(true);
+syncFF();
 drawFaces();
 showReadouts();
 if (store.get('hero', '') === 'tires' && tires.available()) heroKind = 'tires';
