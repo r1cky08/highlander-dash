@@ -21,9 +21,9 @@ android {
     signingConfigs {
         release {
             storeFile file('release.jks')
-            storePassword (System.getenv('SIGNING_PASSWORD') ?: 'android').trim()
-            keyAlias (System.getenv('SIGNING_ALIAS') ?: 'release').trim()
-            keyPassword (System.getenv('SIGNING_PASSWORD') ?: 'android').trim()
+            storePassword = (System.getenv('SIGNING_PASSWORD') ?: 'android').trim()
+            keyAlias = (System.getenv('SIGNING_ALIAS') ?: 'release').trim()
+            keyPassword = (System.getenv('SIGNING_PASSWORD') ?: 'android').trim()
         }
     }
 
