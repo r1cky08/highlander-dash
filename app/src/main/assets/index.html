@@ -2457,7 +2457,7 @@ document.body.classList.toggle('onlinemap', online.on);
 if (online.on) $('attrib').textContent = '© OpenFreeMap © OpenMapTiles © OpenStreetMap';
 window.onOnlineMap = function (st) {
   // No tiles yet and no internet: say so on the map card instead of a blank map.
-  $('nomap').innerHTML = st === 'off' ? '<b>Waiting for internet</b>Streets load once the unit is online.<br>A phone hotspot works.' : '';
+  $('nomap').innerHTML = st === 'off' ? '<b>Waiting for internet</b>Streets load once the unit is online.' : '';
   $('nomap').style.cssText = st === 'off' ? 'display:block;right:110px;top:30%' : 'display:none';
 };
 applyCards();
