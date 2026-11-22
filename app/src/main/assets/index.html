@@ -894,7 +894,7 @@
       <div class="sr"><div class="l">Big speed card side<i>Swap sides to put the speed card on the right and the other cards on the left</i></div><div class="c"><button class="opt" id="sideL" onclick="setSide('L')">Left</button><button class="opt" id="sideR" onclick="setSide('R')">Right</button></div></div>
 
       <div class="sg">HERO CARD</div>
-      <div class="sr"><div class="l">Flip through<i>Tap the big card or its arrows to flip. Speed, heading and elevation are always there; Tires adds a tire face once sensors are set up</i></div><div class="c" id="faces"></div></div>
+      <div class="sr"><div class="l">Flip through<i>Tap the big card or its arrows to flip. Choose which faces it flips through; Tires shows once sensors are set up. With the map hidden, heading, elevation and tires move to their own card</i></div><div class="c" id="faces"></div></div>
 
       <div class="sg">TIRES</div>
       <div class="sr"><div class="l">Warn below<i>A tire turns orange under this pressure</i></div>
@@ -922,9 +922,6 @@
       <div class="sr"><div class="l">Brand signs<i>A floating logo above known stores and restaurants in the 3D map</i></div><div class="c"><button class="tg" id="sBrand" aria-label="Brand signs" onclick="map.toggleBrand(); renderSettings()"></button></div></div>
 
       </div>
-      <div class="sg">FANTASY FOOTBALL</div>
-      <div class="sr"><div class="l">Sleeper league<i>Optional. Enter your Sleeper username to add a Team button and matchup, standings and news faces to the big card</i></div><div class="c"><button class="opt" onclick="closeSettings(); openTeam(); ff.showSetup(true)">Set up</button></div></div>
-
       <div class="sg">SYSTEM</div>
       <div class="sr"><div class="l">Song info access<i>Lets the now playing card read what is playing</i></div><div class="c"><button class="opt" onclick="Car.requestMediaAccess()">Allow</button></div></div>
       <div class="sr"><div class="l">Radio diagnostic<i>Shows what the factory radio exposes, so a radio card can be built. Open it, play the radio, then screenshot or film it</i></div><div class="c"><button class="opt" onclick="openDiag()">Open</button></div></div>
@@ -1149,14 +1146,20 @@ applyTop();
 // ---------- Readouts: one big (tap to switch), the other two small up top ----------
 var POINTS = ['N','NE','E','SE','S','SW','W','NW'];
 var gps = { mph: null, bearing: null, ft: null };
-var BASE = ['speed', 'heading', 'elevation'];
+var BASE = ['speed', 'heading', 'elevation'], BASE_NAMES = { speed: 'Speed', heading: 'Heading', elevation: 'Elevation' };
+var baseOn; try { baseOn = JSON.parse(store.get('baseFaces', '["speed","heading","elevation"]')); } catch (e) { baseOn = BASE.slice(); }
+function toggleBase(k) {
+  var i = baseOn.indexOf(k);
+  if (i >= 0) { if (baseOn.length < 2) return; baseOn.splice(i, 1); } else baseOn.push(k);   // at least one stays on
+  store.set('baseFaces', JSON.stringify(baseOn)); drawFaces(); showReadouts();
+}
 var FACES = [['matchup', 'Matchup'], ['standings', 'Standings'], ['lineup', 'My lineup'], ['news', 'Player news'], ['season', 'Season']];   // shown once a Sleeper league is set up
 var faceOn; try { faceOn = JSON.parse(store.get('faces', '["matchup","standings","news","season"]')); } catch (e) { faceOn = ['matchup', 'standings', 'news', 'season']; }
 var heroKind = store.get('hero', 'speed'), lastFace = '';
 function heroList() {
   var mode = homeMode();
   if (mode === 'amb') return ['speed'];
-  var l = mode === 'data' ? ['speed'] : BASE.slice();   // with the map hidden, heading, elevation and tires live in the big readout card instead
+  var l = mode === 'data' ? ['speed'] : BASE.filter(function (k) { return baseOn.indexOf(k) >= 0; });   // with the map hidden, heading, elevation and tires live in the big readout card instead
   if (mode === 'full' && window.tires && tires.available()) l.push('tires');
   if (window.ff && ff.ready()) FACES.forEach(function (f) { if (faceOn.indexOf(f[0]) >= 0) l.push(f[0]); });
   return l;
@@ -1181,13 +1184,17 @@ function toggleFace(k) {
 }
 function drawFaces() {
   var box = $('faces'); box.innerHTML = '';
+  BASE.forEach(function (k) {
+    var b = document.createElement('button'); b.className = 'chip' + (baseOn.indexOf(k) >= 0 ? ' on' : ''); b.textContent = BASE_NAMES[k];
+    b.onclick = function () { toggleBase(k); }; box.appendChild(b);
+  });
   if (window.ff && store.get('ffUser', '')) FACES.forEach(function (f) {
     var b = document.createElement('button'); b.className = 'chip' + (faceOn.indexOf(f[0]) >= 0 ? ' on' : ''); b.textContent = f[1];
     b.onclick = function () { toggleFace(f[0]); }; box.appendChild(b);
   });
   var t = document.createElement('button'); t.className = 'chip' + (store.get('tireFace', '1') === '1' ? ' on' : ''); t.textContent = 'Tires';
   t.onclick = function () { store.set('tireFace', store.get('tireFace', '1') === '1' ? '0' : '1'); drawFaces(); showReadouts(); }; box.appendChild(t);
-  box.style.display = 'inline-flex'; box.style.gap = '8px';
+  box.style.display = 'inline-flex'; box.style.gap = '8px'; box.style.flexWrap = 'nowrap'; box.style.flexShrink = '0';
 }
 function readout(kind) {
   if (kind === 'speed') return { v: gps.mph == null ? '--' : String(gps.mph), u: 'MPH', a: gps.mph == null ? '--' : String(gps.mph), b: ' mph' };
@@ -1200,7 +1207,7 @@ function readout(kind) {
   return { v: f, u: 'FEET', a: f, b: ' ft' };
 }
 function showReadouts() {
-  var l = heroList(); if (l.indexOf(heroKind) < 0) heroKind = 'speed';
+  var l = heroList(); if (l.indexOf(heroKind) < 0) heroKind = l[0];
   var isFace = BASE.indexOf(heroKind) < 0;
   $('hero').classList.toggle('face', isFace);
   if (isFace) {
