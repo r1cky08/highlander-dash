@@ -30,7 +30,7 @@ jobs:
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
         run: |
           if [ -n "$KS_B64" ]; then
-            echo "$KS_B64" | base64 -d > app/release.jks
+            printf "%s" "$KS_B64" | tr -d " \r\n" | base64 -d > app/release.jks
             echo "Using the repo's signing key"
           else
             keytool -genkeypair -keystore app/release.jks -alias release -keyalg RSA -keysize 2048 -validity 10000 \
