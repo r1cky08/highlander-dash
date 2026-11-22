@@ -2344,12 +2344,24 @@ var map = (function () {
     clearTimeout(panTimer);
     if (v && !pins) panTimer = setTimeout(api.recenter, 30000);
   }
+  // Two fingers: spread to zoom in, pinch to zoom out, one zoom step each time the gap grows or shrinks by about a third.
+  var touches = {}, pinch = null;
+  function gap() { var k = Object.keys(touches); if (k.length < 2) return 0; var a = touches[k[0]], b = touches[k[1]]; return Math.hypot(a.x - b.x, a.y - b.y); }
   cv.addEventListener('pointerdown', function (e) {
+    touches[e.pointerId] = { x: e.clientX, y: e.clientY };
+    try { cv.setPointerCapture(e.pointerId); } catch (err) { }
+    if (Object.keys(touches).length >= 2) { drag = null; pinch = { d: gap(), moved: true }; return; }
     if (!pos) return;
     drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
-    try { cv.setPointerCapture(e.pointerId); } catch (err) { }
   });
   cv.addEventListener('pointermove', function (e) {
+    if (touches[e.pointerId]) { touches[e.pointerId].x = e.clientX; touches[e.pointerId].y = e.clientY; }
+    if (pinch) {
+      var g = gap(); if (!g || !pinch.d) return;
+      if (g > pinch.d * 1.35) { api.zoom(-1); pinch.d = g; }
+      else if (g < pinch.d / 1.35) { api.zoom(1); pinch.d = g; }
+      return;
+    }
     if (!drag || e.pointerId !== drag.id) return;
     var dx = (e.clientX - drag.x) / stageScale, dy = (e.clientY - drag.y) / stageScale;
     if (!drag.moved && dx * dx + dy * dy < 36) return;
@@ -2363,6 +2375,8 @@ var map = (function () {
     setPanned(true); kick();
   });
   function endDrag(e) {
+    delete touches[e.pointerId];
+    if (pinch) { if (Object.keys(touches).length < 2) pinch = null; drag = null; return; }   // lifting after a pinch is not a tap
     var d0 = drag; if (drag && e.pointerId === drag.id) drag = null;
     if (d0 && !d0.moved && pins && pinCb && e.type === 'pointerup' && pos) {   // a tap on a pin chooses it
       var rc = cv.getBoundingClientRect(), tx = (e.clientX - rc.left) / stageScale, ty = (e.clientY - rc.top) / stageScale, cr = -rot * RAD, mpp = ZOOMS[zi], bi = -1, bd = 30;
