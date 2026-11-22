@@ -1,0 +1,45 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Tire Monitor: a small phone app that reads the same Bluetooth valve-cap sensors as the launcher.
+android {
+    namespace 'com.highlanderdash.tiremonitor'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.highlanderdash.tiremonitor'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    // Signing key: the build writes release.jks from the SIGNING_KEYSTORE_B64 Actions secret (see README).
+    // Keep the same key for every release so updates install over the old app.
+    signingConfigs {
+        release {
+            storeFile file('../app/release.jks')
+            storePassword System.getenv('SIGNING_PASSWORD') ?: 'android'
+            keyAlias System.getenv('SIGNING_ALIAS') ?: 'release'
+            keyPassword System.getenv('SIGNING_PASSWORD') ?: 'android'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}

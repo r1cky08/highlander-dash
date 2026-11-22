@@ -1,0 +1,96 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      # The signing key lives in the SIGNING_KEYSTORE_B64 secret (base64 of a .jks file), never in the repo.
+      # In a fork without that secret, a throwaway key is made so the build still works (its APK cannot update one signed with another key).
+      - name: Signing key
+        env:
+          KS_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > app/release.jks
+            echo "Using the repo's signing key"
+          else
+            keytool -genkeypair -keystore app/release.jks -alias release -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android -dname "CN=Highlander Dash test build"
+            echo "No signing secret: made a throwaway key"
+          fi
+
+      # Optional: offline map, place search, addresses, buildings and routing for your own area.
+      # Turn it on by adding repository variables (Settings, Secrets and variables, Actions, Variables):
+      #   MAP_REGION  Geofabrik path, for example north-america/us/texas
+      #   MAP_BBOX    west,south,east,north of the area to keep, for example -98.2,29.2,-97.4,30.6
+      #   BUILDINGS_BBOX  (optional) a small area for 3D buildings, same format
+      - uses: actions/setup-python@v5
+        if: vars.MAP_REGION != ''
+        with:
+          python-version: '3.12'
+
+      - name: Build map data for your area
+        if: vars.MAP_REGION != ''
+        env:
+          MAP_REGION: ${{ vars.MAP_REGION }}
+          MAP_BBOX: ${{ vars.MAP_BBOX }}
+          BUILDINGS_BBOX: ${{ vars.BUILDINGS_BBOX }}
+        run: |
+          pip install osmium==4.3.2 shapely==2.2.0 numpy
+          PBF=/tmp/region-latest.osm.pbf
+          python tools/fetch_streets.py app/src/main/assets/streets $PBF
+          rm -f app/src/main/assets/streets/pois.json
+          python tools/fetch_places.py app/src/main/assets/places $PBF
+          python tools/fetch_addresses.py app/src/main/assets/addresses $PBF
+          if [ -n "$BUILDINGS_BBOX" ]; then python tools/fetch_buildings.py app/src/main/assets/buildings $PBF; fi
+          python tools/build_routes.py app/src/main/assets/route $PBF
+          du -sh app/src/main/assets/*
+
+      - name: Build APK
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          SIGNING_ALIAS: ${{ secrets.SIGNING_ALIAS }}
+        run: |
+          gradle assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/*.apk HighlanderDash.apk
+          cp tires/build/outputs/apk/release/*.apk TireMonitor.apk
+          ls -la HighlanderDash.apk TireMonitor.apk
+
+      - name: Upload APK (Actions artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: HighlanderDash-apk
+          path: |
+            HighlanderDash.apk
+            TireMonitor.apk
+
+      # Publishes the plain .apk files as a GitHub Release so they can be downloaded straight onto the head unit.
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Highlander Dash build ${{ github.run_number }}${{ github.ref == 'refs/heads/main' && '' || ' (test)' }}
+          make_latest: ${{ github.ref == 'refs/heads/main' }}
+          prerelease: ${{ github.ref != 'refs/heads/main' }}
+          files: |
+            HighlanderDash.apk
+            TireMonitor.apk

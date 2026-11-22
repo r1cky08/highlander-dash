@@ -1,0 +1,12 @@
+build/
+.gradle/
+app/build/
+local.properties
+*.iml
+.idea/
+app/src/main/assets/streets/
+app/src/main/assets/places/
+app/src/main/assets/route/
+app/src/main/assets/buildings/
+app/src/main/assets/addresses/
+release.jks

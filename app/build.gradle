@@ -1,0 +1,51 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.highlanderdash.launcher'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.highlanderdash.launcher'
+        minSdk 26
+        // Head unit runs Android 10, so target 29 keeps behavior simple.
+        targetSdk 29
+        versionCode 1
+        versionName '1.0'
+    }
+
+    
+    // Signing key: the build writes release.jks from the SIGNING_KEYSTORE_B64 Actions secret (see README).
+    // Keep the same key for every release so updates install over the old app.
+    signingConfigs {
+        release {
+            storeFile file('release.jks')
+            storePassword System.getenv('SIGNING_PASSWORD') ?: 'android'
+            keyAlias System.getenv('SIGNING_ALIAS') ?: 'release'
+            keyPassword System.getenv('SIGNING_PASSWORD') ?: 'android'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // The route graph is mapped straight out of the APK, so it must be stored uncompressed.
+    androidResources {
+        noCompress 'rg'
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}

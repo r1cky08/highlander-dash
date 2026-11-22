@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Tire Monitor</title>
+<style>
+  :root { --bg: #08080a; --card: #111214; --line: #1f2124; --text: #f2f2f3; --dim: #a4a6ab; --faint: #6e7176; --amber: #f5a524; --ok: #7fd6a4; }
+  html, body { margin: 0; background: var(--bg); }
+  body { font-family: Roboto, system-ui, sans-serif; color: var(--text); -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; padding: 18px 16px 40px; }
+  button { all: unset; box-sizing: border-box; cursor: pointer; }
+  button:active { opacity: 0.6; }
+  header { display: flex; align-items: center; justify-content: space-between; margin: 4px 4px 16px; }
+  h1 { font-size: 26px; font-weight: 300; margin: 0; letter-spacing: 0.5px; }
+  #state { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; }
+  #state i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .card { border-radius: 24px; background: linear-gradient(180deg, #17181b 0%, #0f1012 100%); border: 1px solid var(--line); }
+  #car { padding: 26px 22px; display: grid; grid-template-columns: 1fr 96px 1fr; grid-template-rows: 150px 150px; align-items: center; }
+  #car.alert { border-color: rgba(245,165,36,0.55); }
+  .tw { display: flex; flex-direction: column; align-items: flex-start; }
+  .tw.r { align-items: flex-end; text-align: right; }
+  .tw em { font-style: normal; font-size: 12px; letter-spacing: 2px; color: var(--faint); font-weight: 500; margin-bottom: 6px; }
+  .tw b { font-size: 60px; font-weight: 200; line-height: 1; letter-spacing: -1.5px; }
+  .tw b small { font-size: 15px; font-weight: 400; color: var(--dim); margin-left: 4px; letter-spacing: 0; }
+  .tw span { font-size: 14px; color: var(--dim); margin-top: 8px; white-space: nowrap; }
+  .tw.low b { color: var(--amber); }
+  .tw.old b, .tw.none b { color: var(--faint); }
+  #car svg { grid-column: 2; grid-row: 1 / span 2; justify-self: center; }
+  #msg { display: none; margin-top: 14px; padding: 14px 18px; border-radius: 18px; background: #1b2a3f; border: 1px solid #2f4c73; color: #cfe2f8; font-size: 15px; line-height: 1.4; }
+  #msg.show { display: block; }
+  .row { margin-top: 14px; min-height: 60px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); display: flex; align-items: center; padding: 0 12px 0 20px; font-size: 16px; color: #d6d7da; }
+  .row .sp { flex: 1; }
+  .rnd { width: 44px; height: 44px; border-radius: 50%; border: 1px solid #2a2c30; background: #141517; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #e6e7e9; }
+  #lowV { min-width: 76px; text-align: center; color: var(--text); font-weight: 500; }
+  h2 { font-size: 12px; letter-spacing: 3px; color: var(--faint); font-weight: 500; margin: 26px 6px 4px; }
+  #note { font-size: 13px; color: var(--faint); line-height: 1.45; margin: 6px 6px 0; }
+  .tsr { margin-top: 10px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); padding: 14px 14px 14px 20px; }
+  .tsr .top { display: flex; align-items: baseline; gap: 10px; }
+  .tsr .top b { flex: 1; font-size: 17px; font-weight: 500; }
+  .tsr .top .p { font-size: 26px; font-weight: 300; }
+  .tsr .top .p small { font-size: 13px; color: var(--dim); margin-left: 3px; }
+  .tsr i { display: block; font-style: normal; font-size: 13px; color: var(--faint); margin: 3px 0 12px; }
+  .tsr .pos { display: flex; gap: 8px; }
+  .tsr .pos button { flex: 1; height: 44px; border-radius: 14px; border: 1px solid #2a2c30; background: #141517; color: #d6d7da; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+  .tsr .pos button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+  #empty { font-size: 15px; color: var(--dim); padding: 14px 6px; line-height: 1.45; }
+  #again { margin: 16px auto 0; height: 48px; padding: 0 24px; border-radius: 24px; border: 1px solid #2a2c30; background: #141517; display: flex; align-items: center; width: max-content; font-size: 15px; color: #d6d7da; }
+  #cmpBtn { margin: 16px auto 0; height: 48px; padding: 0 24px; border-radius: 24px; border: 1px solid #2a2c30; background: #141517; display: flex; align-items: center; width: max-content; font-size: 15px; color: #d6d7da; }
+  #note2 { font-size: 13px; color: var(--faint); line-height: 1.45; margin: 8px 6px 0; }
+  #cmp { display: none; position: fixed; inset: 0; z-index: 10; background: var(--bg); overflow-y: auto; padding: 18px 14px 40px; box-sizing: border-box; }
+  #cmp.open { display: block; }
+  #cmHead { display: flex; align-items: center; gap: 12px; margin: 4px 0 12px; }
+  #cmHead h1 { flex: 1; }
+  #cmMsg { font-size: 13px; color: var(--dim); }
+  #cmBtns { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  #cmBtns button { height: 40px; padding: 0 16px; border-radius: 20px; border: 1px solid #2a2c30; background: #141517; color: #d6d7da; font-size: 14px; display: flex; align-items: center; }
+  .cmCap { font-size: 13px; color: var(--dim); line-height: 1.45; margin: 0 4px 14px; }
+  .cmBox { border-radius: 18px; background: var(--card); border: 1px solid var(--line); padding: 12px 14px 10px; margin-bottom: 12px; }
+  .cap { font-size: 12px; letter-spacing: 2px; color: var(--faint); margin-bottom: 6px; }
+  .cmBox table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .cmBox th { text-align: right; font-weight: 500; font-size: 12px; color: var(--faint); padding: 4px 0 6px 8px; }
+  .cmBox th:first-child { text-align: left; }
+  .cmBox td { padding: 7px 0 7px 8px; color: #d6d7da; border-top: 1px solid var(--line); text-align: right; vertical-align: top; }
+  .cmBox td:first-child { text-align: left; padding-left: 0; }
+  .cmBox td.win { color: #7fd6a4; font-weight: 500; }
+  .cmBox .sub { color: var(--faint); font-size: 12px; }
+  .cmBox .leg { font-size: 12px; color: var(--faint); margin-top: 8px; line-height: 1.5; }
+  .cmBox .leg i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin: 0 4px 0 8px; vertical-align: -1px; }
+  .cmBox .wh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .cmBox .wh b { font-size: 15px; font-weight: 500; }
+  .cmBox .wh span { font-size: 13px; color: var(--dim); }
+</style>
+</head>
+<body>
+<header><h1>Tires</h1><div id="state"></div></header>
+<div class="card" id="car"></div>
+<button id="msg"></button>
+<div class="row">Warn below<span class="sp"></span>
+  <button class="rnd" aria-label="Lower" onclick="bump(-1)">−</button><span id="lowV"></span><button class="rnd" aria-label="Raise" onclick="bump(1)">+</button>
+</div>
+<h2>SENSORS</h2>
+<div id="note"></div>
+<div id="list"></div>
+<button id="cmpBtn" onclick="openCompare()">Compare sensors</button>
+<div class="row" style="margin-top:22px">Listen with screen off<span class="sp"></span><button id="bgBtn" class="rnd" style="width:auto;padding:0 16px;border-radius:22px;font-size:15px" onclick="setBg()"><span id="bgV"></span></button></div>
+<div id="note2">With this on, a small notification shows while Tire Monitor keeps listening, and it uses GPS to tell driving from parked. Turn it off to listen only while the app is open.</div>
+<button id="again" onclick="Phone.rescan()">Scan again</button>
+
+<div id="cmp">
+  <div id="cmHead">
+    <button class="rnd" aria-label="Back" onclick="closeCompare()">‹</button>
+    <h1>Compare</h1>
+    <span id="cmMsg"></span>
+  </div>
+  <div id="cmBtns">
+    <button onclick="newLeg()">New leg</button>
+    <button onclick="copySummary()">Copy summary</button>
+    <button onclick="copyLog()">Copy log</button>
+    <button onclick="clearLog()">Clear log</button>
+    <button onclick="copyRaw()">Copy raw packets</button>
+    <button onclick="clearRaw()">Clear raw</button>
+  </div>
+  <div id="cmBody"></div>
+</div>
+
+<script>
+var $ = function (id) { return document.getElementById(id); };
+// In a desktop browser (no Android bridge) use a stand-in so the page still works.
+if (!window.Phone) window.Phone = { bg: function () { return true; }, setBg: function () {}, tireTiming: function () { return '{}'; }, tireTimeline: function () { return '{}'; }, tireSetWheels: function () {}, tireLog: function () { return ''; }, tireLogClear: function () {}, tireTimingReset: function () {}, copyText: function () {},  status: function () { return 'ok'; }, stats: function () { return '0,0'; }, rescan: function () {}, appSettings: function () {} };
+var store = {
+  get: function (k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } },
+  set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+var POS = [['fl', 'Front left', 'FL'], ['fr', 'Front right', 'FR'], ['rl', 'Rear left', 'RL'], ['rr', 'Rear right', 'RR']];
+var STALE = 30 * 60 * 1000;   // parked sensors only speak every 10 to 25 minutes
+// No sensors are assigned out of the box: pick yours under Sensors.
+var NEW_MACS = [];
+var DEFAULT_MAP = {};
+var map, seen;
+try { map = JSON.parse(store.get('tireMap', 'null')) || DEFAULT_MAP; } catch (e) { map = DEFAULT_MAP; }
+try { seen = JSON.parse(store.get('tireSeen', '{}')) || {}; } catch (e) { seen = {}; }
+var low = +store.get('tireLow', '28') || 28;
+var pending = false;
+
+function psi(r) { return r.pa / 6894.757; }
+function degF(r) { return Math.round(r.c * 9 / 5 + 32); }
+function ago(t) {
+  var s = (Date.now() - t) / 1000;
+  if (s < 60) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago';
+  if (s < 86400) return Math.round(s / 3600) + ' hr ago'; return Math.round(s / 86400) + ' d ago';
+}
+// The second set's addresses all end in 00:A0:E1, so its short name is the first six digits; LeePee keeps the last six.
+function short(mac) { var h = mac.replace(/:/g, '').toUpperCase(); return kindOf(mac) === 'n' ? h.slice(0, 6) : h.slice(-6); }
+function kindOf(mac) { var r = seen[mac]; if (r && r.k) return r.k; return NEW_MACS.indexOf(mac) >= 0 ? 'n' : 'l'; }   // 'n' = second set, 'l' = LeePee
+function brand(mac) { return kindOf(mac) === 'n' ? 'Type B' : 'LeePee'; }
+function state(k) {
+  var mac = map[k], r = mac && seen[mac]; if (!r) return null;
+  var p = psi(r);
+  return { r: r, psi: p, low: p < low, old: Date.now() - r.t > STALE };
+}
+function slot(p, right, row) {
+  var k = p[0], st = state(k), cls = 'tw' + (right ? ' r' : ''), pos = 'grid-column:' + (right ? 3 : 1) + ';grid-row:' + row, lbl = '<em>' + p[1].toUpperCase() + '</em>';
+  if (!st) return '<div class="' + cls + ' none" style="' + pos + '">' + lbl + '<b>--</b><span>' + (map[k] ? 'Waiting' : 'Not set') + '</span></div>';
+  if (st.old) cls += ' old'; else if (st.low) cls += ' low';
+  return '<div class="' + cls + '" style="' + pos + '">' + lbl + '<b>' + Math.floor(st.psi) + '<small>psi</small></b><span>' +
+    degF(st.r) + '°F · ' + ago(st.r.t) + '</span></div>';
+}
+function wheel(k) { var st = state(k); return st && !st.old && st.low ? '#f5a524' : st ? '#5a5d62' : '#2a2c30'; }
+
+function render() {
+  pending = false;
+  var lows = [], waiting = false;
+  POS.forEach(function (p) { var st = state(p[0]); if (st && !st.old && st.low) lows.push(p[1]); if (map[p[0]] && (!st || st.old)) waiting = true; });
+  var assigned = POS.filter(function (p) { return map[p[0]]; }).length, color, text;
+  if (lows.length) { color = 'var(--amber)'; text = lows.length === 1 ? lows[0] + ' low' : lows.length + ' tires low'; }
+  else if (!assigned) { color = 'var(--dim)'; text = 'Assign sensors below'; }
+  else if (waiting) { color = 'var(--dim)'; text = 'Waiting for sensors'; }
+  else { color = 'var(--ok)'; text = 'All normal'; }
+  $('state').style.color = color; $('state').innerHTML = '<i></i>' + text;
+  $('car').classList.toggle('alert', lows.length > 0);
+  $('car').innerHTML = slot(POS[0], false, 1) + slot(POS[1], true, 1) + slot(POS[2], false, 2) + slot(POS[3], true, 2) +
+    '<svg width="88" height="200" viewBox="0 0 96 220" fill="none" aria-hidden="true">' +
+    '<rect x="4" y="34" width="14" height="38" rx="5" fill="' + wheel('fl') + '"></rect><rect x="78" y="34" width="14" height="38" rx="5" fill="' + wheel('fr') + '"></rect>' +
+    '<rect x="4" y="148" width="14" height="38" rx="5" fill="' + wheel('rl') + '"></rect><rect x="78" y="148" width="14" height="38" rx="5" fill="' + wheel('rr') + '"></rect>' +
+    '<rect x="14" y="8" width="68" height="204" rx="26" fill="#131417" stroke="#5a5d62" stroke-width="1.6"></rect>' +
+    '<path d="M24 66 Q48 52 72 66 L68 92 Q48 86 28 92 Z" fill="rgba(160,170,185,0.14)" stroke="#5a5d62" stroke-width="1.2"></path>' +
+    '<path d="M28 168 Q48 174 68 168 L71 190 Q48 198 25 190 Z" fill="rgba(160,170,185,0.10)" stroke="#5a5d62" stroke-width="1.2"></path>' +
+    '<path d="M27 100 L27 158 M69 100 L69 158" stroke="#2c2e33" stroke-width="1.2"></path></svg>';
+  $('lowV').textContent = low + ' psi';
+
+  var st = Phone.status(), m = '', act = null;
+  if (st === 'noperm') { m = 'Tire Monitor needs the Nearby devices and Precise location permissions to hear the sensors. Tap here to open its settings.'; act = function () { Phone.appSettings(); }; }
+  else if (st === 'off') m = 'Bluetooth is off. Turn it on and the readings will appear.';
+  else if (st === 'locoff') m = 'Location is off. Android only lets apps scan for Bluetooth sensors while Location is on.';
+  else if (st === 'nobt') m = 'This phone has no Bluetooth scanner the app can use.';
+  else if (st.indexOf('failed') === 0) m = 'The Bluetooth scan could not start (' + st + '). Tap to try again.', act = function () { Phone.rescan(); };
+  $('msg').classList.toggle('show', !!m); $('msg').textContent = m; $('msg').onclick = act;
+
+  var n = Phone.stats().split(',');
+  $('note').textContent = 'Readings arrive while this app is open and you are near the car. Parked sensors only report every 10 to 25 minutes; they speak up when the wheels turn or pressure changes. Scan ' +
+    (st === 'ok' ? 'running' : 'not running') + ': ' + n[0] + ' Bluetooth broadcasts heard, ' + n[1] + ' from tire sensors.';
+  var list = $('list'), macs = Object.keys(seen);
+  POS.forEach(function (p) { if (map[p[0]] && macs.indexOf(map[p[0]]) < 0) macs.push(map[p[0]]); });
+  macs.sort(); list.innerHTML = '';
+  if (!macs.length) list.innerHTML = '<div id="empty">Listening for sensors. To wake one now, unscrew a cap and screw it back on.</div>';
+  macs.forEach(function (mac) {
+    var r = seen[mac], row = document.createElement('div'); row.className = 'tsr';
+    row.innerHTML = '<div class="top"><b>' + brand(mac) + ' ' + short(mac) + '</b><span class="p">' + (r ? psi(r).toFixed(1) : '--') + '<small>psi</small></span></div><i>' +
+      (r ? degF(r) + '°F · ' + (r.b >= 0 ? 'battery ' + r.b + '% · ' : '') + (r.b < -1 ? 'battery ' + (-r.b / 100).toFixed(2) + ' V' + (-r.b <= 275 ? ' (low)' : '') + ' · ' : '') + ago(r.t) + (r.rssi ? ' · signal ' + r.rssi + ' dBm' : '') + (r.f ? ' · sensor alert flag ' + r.f : '') : 'Not heard yet') + '</i><div class="pos"></div>';
+    var pos = row.querySelector('.pos');
+    POS.forEach(function (p) {
+      var b = document.createElement('button'); b.textContent = p[2]; b.setAttribute('aria-label', p[1]);
+      if (map[p[0]] === mac) b.className = 'on';
+      b.onclick = function () { assign(p[0], mac); }; pos.appendChild(b);
+    });
+    list.appendChild(row);
+  });
+}
+function assign(k, mac) {
+  if (map[k] === mac) delete map[k];
+  else { POS.forEach(function (p) { if (map[p[0]] === mac) delete map[p[0]]; }); map[k] = mac; }
+  store.set('tireMap', JSON.stringify(map)); pushWheels(); render();
+}
+  var timingData = {};
+  function readTiming() { try { timingData = JSON.parse(Phone.tireTiming ? Phone.tireTiming() : '{}') || {}; } catch (e) { timingData = {}; } return timingData; }
+  function dur(ms) { if (ms == null || ms < 0) return '--'; var s = ms / 1000; if (s < 90) return Math.round(s) + ' s'; if (s < 5400) return (s / 60).toFixed(1) + ' min'; return (s / 3600).toFixed(1) + ' hr'; }
+  function pushWheels() {
+    var m = {}; POS.forEach(function (p) { if (map[p[0]]) m[map[p[0]]] = p[2]; });
+    if (Phone.tireSetWheels) Phone.tireSetWheels(JSON.stringify(m));
+  }
+  // ---------- Compare screen: the two sensor sets side by side ----------
+  function num(v) { return v == null || isNaN(v) || v < 0 ? null : v; }
+  function pct(v) { return v == null ? '--' : Math.round(v * 100) + '%'; }
+  function psiStep(pa) { return pa == null || pa <= 0 ? null : pa / 6894.757; }
+  // Each row: how to read the number from one sensor's stats, how to combine the set's sensors, how to show it,
+  // which direction is better, and how big a gap has to be before one set is called better.
+  var CMP_ROWS = [
+    { label: 'Time until every sensor was heard', get: function (t) { return num(t.first); }, how: 'max', need: true, fmt: dur, better: -1, tol: function (a, b) { return Math.abs(a - b) > 5000 && Math.max(a, b) > 1.3 * Math.min(a, b); } },
+    { label: 'Fresh reading while driving', sub: 'share of drive time with a reading under 2 min old', get: function (t) { return t.mv && t.mv.ms > 30000 ? num(t.mv.cov) : null; }, how: 'avg', zero: true, fmt: pct, better: 1, tol: function (a, b) { return Math.abs(a - b) >= 0.05; } },
+    { label: 'Typical gap between broadcasts, driving', get: function (t) { return t.mv ? num(t.mv.p50) : null; }, how: 'avg', fmt: dur, better: -1, tol: function (a, b) { return Math.max(a, b) > 1.15 * Math.min(a, b); } },
+    { label: 'Worst-case gap, driving', sub: '9 in 10 gaps were shorter than this', get: function (t) { return t.mv ? num(t.mv.p90) : null; }, how: 'max', fmt: dur, better: -1, tol: function (a, b) { return Math.max(a, b) > 1.15 * Math.min(a, b); } },
+    { label: 'Typical gap between broadcasts, parked', get: function (t) { return t.pk ? num(t.pk.p50) : null; }, how: 'avg', fmt: dur, better: -1, tol: function (a, b) { return Math.max(a, b) > 1.15 * Math.min(a, b); } },
+    { label: 'Longest silence', get: function (t) { return num(t.maxGap); }, how: 'max', need: true, fmt: dur, better: -1, tol: function (a, b) { return Math.max(a, b) > 1.15 * Math.min(a, b); } },
+    { label: 'Signal, average', get: function (t) { return t.rssi == null ? null : t.rssi; }, how: 'avg', fmt: function (v) { return v == null ? '--' : Math.round(v) + ' dBm'; }, better: 1, tol: function (a, b) { return Math.abs(a - b) >= 3; } },
+    { label: 'Signal, weakest reading', get: function (t) { return t.rssiMin == null ? null : t.rssiMin; }, how: 'min', fmt: function (v) { return v == null ? '--' : Math.round(v) + ' dBm'; }, better: 1, tol: function (a, b) { return Math.abs(a - b) >= 3; } },
+    { label: 'Signal steadiness', sub: 'how much it swings', get: function (t) { return t.rssiSd == null ? null : t.rssiSd; }, how: 'avg', fmt: function (v) { return v == null ? '--' : '±' + v.toFixed(1) + ' dB'; }, better: -1, tol: function (a, b) { return Math.abs(a - b) >= 1; } },
+    { label: 'Smallest pressure step it reports', sub: 'finer is better', get: function (t) { return psiStep(t.stepPa); }, how: 'min', fmt: function (v) { return v == null ? 'none yet' : v.toFixed(v >= 0.1 ? 2 : 3) + ' psi'; }, better: -1, tol: function (a, b) { return Math.max(a, b) > 1.5 * Math.min(a, b); } },
+    { label: 'Broadcasts heard', get: function (t) { return num(t.bursts); }, how: 'sum', fmt: function (v) { return v == null ? '--' : String(v); }, better: 0 }
+  ];
+  function combine(vals, how) {
+    if (!vals.length) return null;
+    if (how === 'max') return Math.max.apply(null, vals);
+    if (how === 'min') return Math.min.apply(null, vals);
+    var sum = vals.reduce(function (x, y) { return x + y; }, 0);
+    return how === 'sum' ? sum : sum / vals.length;
+  }
+  function setValue(row, list) {
+    if (!list.length) return null;
+    var vals = [], missing = 0;
+    list.forEach(function (x) { var v = x.t ? row.get(x.t) : null; if (v == null) { missing++; if (row.zero) vals.push(0); } else vals.push(v); });
+    if (row.need && missing) return null;
+    return combine(vals, row.how);
+  }
+  function compareModel() {
+    var tm = readTiming(), s = tm.s || {}, sets = { n: [], l: [] };
+    POS.forEach(function (p) { var mac = map[p[0]]; if (mac) sets[kindOf(mac)].push({ pos: p[2], mac: mac, t: s[mac] || null }); });
+    var rows = CMP_ROWS.map(function (r) {
+      var a = setValue(r, sets.n), b = setValue(r, sets.l), win = null;
+      if (r.better && a != null && b != null && r.tol(a, b)) win = (r.better > 0 ? a > b : a < b) ? 'n' : 'l';
+      return { label: r.label, sub: r.sub, a: r.fmt(a), b: r.fmt(b), win: win };
+    });
+    var bat = function (list) { var v = []; list.forEach(function (x) { var r = seen[x.mac]; if (r && r.b >= 0) v.push(r.b); }); return v.length ? Math.round(combine(v, 'avg')) + '%' : 'not reported'; };
+    rows.push({ label: 'Battery level in the broadcast', a: bat(sets.n), b: bat(sets.l), win: null });
+    return { tm: tm, sets: sets, rows: rows };
+  }
+  function wheelsOf(list) { return list.length ? list.map(function (x) { return x.pos; }).join(', ') : 'none'; }
+  function timelineSvg() {
+    var tl; try { tl = JSON.parse(Phone.tireTimeline ? Phone.tireTimeline(60) : '{}') || {}; } catch (e) { tl = {}; }
+    var cur = tl.cur, per = tl.s || {}, W = 5, H = 18, G = 6, LX = 34, N = 60;
+    if (cur == null) return '<div class="sub">No timeline yet.</div>';
+    var rowsPos = POS.filter(function (p) { return map[p[0]]; });
+    var h = LX + N * W + 10, ht = (rowsPos.length + 1) * (H + G) + 22, out = '<svg viewBox="0 0 ' + h + ' ' + ht + '" style="display:block;width:100%;height:auto">';
+    var moving = {};
+    rowsPos.forEach(function (p) { (per[map[p[0]]] || []).forEach(function (e) { if (e[3]) moving[e[0]] = 1; }); });
+    function color(avg) { return avg > -70 ? '#7fd6a4' : avg > -80 ? '#e8c25f' : '#f5a524'; }
+    var y = 0;
+    out += '<text x="0" y="' + (y + 14) + '" fill="#6e7176" font-size="11">drive</text>';
+    for (var i = 0; i < N; i++) { var m = cur - (N - 1) + i; out += '<rect x="' + (LX + i * W) + '" y="' + y + '" width="' + (W - 1) + '" height="' + H + '" rx="2" fill="' + (moving[m] ? '#4a8fe0' : '#16171a') + '"></rect>'; }
+    y += H + G;
+    rowsPos.forEach(function (p) {
+      var mac = map[p[0]], by = {}; (per[mac] || []).forEach(function (e) { by[e[0]] = e; });
+      out += '<text x="0" y="' + (y + 14) + '" fill="#a4a6ab" font-size="12">' + p[2] + '</text>';
+      for (var i = 0; i < N; i++) { var m = cur - (N - 1) + i, e = by[m]; out += '<rect x="' + (LX + i * W) + '" y="' + y + '" width="' + (W - 1) + '" height="' + H + '" rx="2" fill="' + (e ? color(e[2]) : '#1d1e22') + '"></rect>'; }
+      y += H + G;
+    });
+    out += '<text x="' + LX + '" y="' + (y + 12) + '" fill="#6e7176" font-size="11">60 min ago</text><text x="' + (LX + N * W) + '" y="' + (y + 12) + '" text-anchor="end" fill="#6e7176" font-size="11">now</text></svg>';
+    return out + '<div class="leg">Each block is one minute. Dark: nothing heard.<i style="background:#7fd6a4"></i>strong signal<i style="background:#e8c25f"></i>medium<i style="background:#f5a524"></i>weak<i style="background:#4a8fe0"></i>driving</div>';
+  }
+  function msg(t) { $('cmMsg').textContent = t; setTimeout(function () { if ($('cmMsg').textContent === t) $('cmMsg').textContent = ''; }, 4000); }
+  function newLeg() { if (Phone.tireTimingReset) Phone.tireTimingReset(); msg('New leg started'); drawCompare(); }
+    function copySummary() {
+    var m = compareModel(), tm = m.tm, L = ['Tire sensor comparison. Type B on ' + wheelsOf(m.sets.n) + ', LeePee on ' + wheelsOf(m.sets.l) + '. Leg length ' + dur(tm.window || 0) + ' (' + dur(tm.mvMs || 0) + ' driving, ' + dur(tm.pkMs || 0) + ' parked)'];
+    m.rows.forEach(function (r) { L.push(r.label + ': new set ' + r.a + ' | LeePee ' + r.b + (r.win ? '  <- ' + (r.win === 'n' ? 'new set' : 'LeePee') + ' better' : '')); });
+    POS.forEach(function (p) {
+      var mac = map[p[0]]; if (!mac) return; var t = (tm.s || {})[mac], r = seen[mac];
+      L.push(p[2] + ' ' + brand(mac) + ' ' + short(mac) + ': ' + (t
+        ? 'first heard ' + dur(t.first) + ', ' + t.bursts + ' broadcasts, gap driving ' + dur(t.mv ? num(t.mv.p50) : null) + ' typical / ' + dur(t.mv ? num(t.mv.p90) : null) + ' worst, parked ' + dur(t.pk ? num(t.pk.p50) : null) + ', longest silence ' + dur(t.maxGap) + ', signal ' + t.rssi + ' avg / ' + t.rssiMin + ' weakest dBm'
+        : 'not heard yet') + (r ? ' | last ' + psi(r).toFixed(1) + ' psi, ' + degF(r) + 'F' : ''));
+    });
+    if (Phone.copyText) { Phone.copyText(L.join('\n')); msg('Summary copied'); } else msg('Not in this build');
+  }
+  function copyLog() {
+    if (!Phone.tireLog || !Phone.copyText) { msg('Not in this build'); return; }
+    var t = Phone.tireLog(480); Phone.copyText(t); msg('Copied ' + Math.max(0, t.split('\n').length - 2) + ' log rows');
+  }
+  function copyRaw() {
+    if (!Phone.rawLog || !Phone.copyText) { msg('Not in this build'); return; }
+    var t = Phone.rawLog(); Phone.copyText(t); msg('Copied ' + Math.max(0, t.split('\n').length - 2) + ' raw packets');
+  }
+  function clearRaw() { if (Phone.rawLogClear) Phone.rawLogClear(); msg('Raw packets cleared'); }
+  function clearLog() { if (Phone.tireLogClear) Phone.tireLogClear(); msg('Log cleared'); }
+  function drawCompare() {
+    var m = compareModel(), tm = m.tm, h;
+    h = '<div class="cmCap">Type B on ' + wheelsOf(m.sets.n) + ' · LeePee on ' + wheelsOf(m.sets.l) + '<br>This leg started ' + dur(tm.window || 0) + ' ago (' + dur(tm.mvMs || 0) + ' driving, ' + dur(tm.pkMs || 0) + ' parked). ' +
+      'Green marks the better set when the gap is big enough to matter. The sets sit on different sides of the car, so swap sides for a second leg before trusting a signal difference.</div>';
+    h += '<div class="cmBox"><div class="cap">SCOREBOARD</div><table><tr><th></th><th>Type B</th><th>LeePee</th></tr>';
+    m.rows.forEach(function (r) {
+      h += '<tr><td>' + r.label + (r.sub ? '<div class="sub">' + r.sub + '</div>' : '') + '</td><td' + (r.win === 'n' ? ' class="win"' : '') + '>' + r.a + '</td><td' + (r.win === 'l' ? ' class="win"' : '') + '>' + r.b + '</td></tr>';
+    });
+    h += '</table></div><div class="cmBox"><div class="cap">LAST 60 MINUTES</div>' + timelineSvg() + '</div>';
+    h += '<div class="cap" style="margin:18px 6px 8px">EACH WHEEL</div>';
+    POS.forEach(function (p) {
+      var mac = map[p[0]]; if (!mac) return;
+      var t = (tm.s || {})[mac], r = seen[mac], last = r ? psi(r).toFixed(1) + ' psi, ' + degF(r) + '°F' : '--';
+      h += '<div class="cmBox"><div class="wh"><b>' + p[2] + ' · ' + brand(mac) + ' ' + short(mac) + '</b><span>' + last + '</span></div>' + (t
+        ? '<table><tr><td>First heard</td><td>' + dur(t.first) + '</td></tr><tr><td>Fresh reading while driving</td><td>' + pct(t.mv && t.mv.ms > 30000 ? num(t.mv.cov) : null) + '</td></tr><tr><td>Gap driving, typical / worst</td><td>' + dur(t.mv ? num(t.mv.p50) : null) + ' / ' + dur(t.mv ? num(t.mv.p90) : null) + '</td></tr><tr><td>Gap parked, typical</td><td>' + dur(t.pk ? num(t.pk.p50) : null) + '</td></tr><tr><td>Longest silence</td><td>' + dur(t.maxGap) + '</td></tr><tr><td>Broadcasts</td><td>' + t.bursts + '</td></tr><tr><td>Signal average (weakest)</td><td>' + t.rssi + ' (' + t.rssiMin + ') dBm</td></tr></table>'
+        : '<div class="sub">Not heard yet</div>') + '</div>';
+    });
+    $('cmBody').innerHTML = h;
+    return m;
+  }
+  function openCompare() { $('cmp').classList.add('open'); drawCompare(); }
+  function closeCompare() { $('cmp').classList.remove('open'); }
+  window.onBack = function () { if ($('cmp').classList.contains('open')) { closeCompare(); return true; } return false; };
+  function setBg() { var on = !(Phone.bg ? Phone.bg() : true); if (Phone.setBg) Phone.setBg(on); drawBg(); }
+  function drawBg() { $('bgV').textContent = (Phone.bg ? Phone.bg() : true) ? 'On' : 'Off'; }
+  setInterval(function () { if ($('cmp').classList.contains('open')) drawCompare(); }, 3000);
+function bump(d) { low = Math.max(15, Math.min(50, low + d)); store.set('tireLow', String(low)); render(); }
+window.onTire = function (mac, pa, centiC, batt, flag, rssi, kind, age) {
+  var t = Date.now() - (age || 0);
+  if (seen[mac] && seen[mac].t >= t) return;   // a replay of something already shown
+  seen[mac] = { pa: pa, c: centiC / 100, b: batt, f: flag, t: t, rssi: rssi, k: kind || 'l' };
+  store.set('tireSeen', JSON.stringify(seen));
+  if (!pending) { pending = true; setTimeout(render, 800); }
+};
+setInterval(render, 3000);
+pushWheels();
+drawBg();
+render();
+</script>
+</body>
+</html>
