@@ -894,7 +894,7 @@
       <div class="sr"><div class="l">Big speed card side<i>Swap sides to put the speed card on the right and the other cards on the left</i></div><div class="c"><button class="opt" id="sideL" onclick="setSide('L')">Left</button><button class="opt" id="sideR" onclick="setSide('R')">Right</button></div></div>
 
       <div class="sg">HERO CARD</div>
-      <div class="sr"><div class="l">Flip through<i>Tap the big card or its arrows to flip. Choose which faces it flips through; Tires shows once sensors are set up. With the map hidden, heading, elevation and tires move to their own card</i></div><div class="c" id="faces"></div></div>
+      <div class="sr"><div class="l">Flip through<i>Tap the big card or its arrows to flip. Speed, heading and elevation are always there; Tires adds a tire face once sensors are set up</i></div><div class="c" id="faces"></div></div>
 
       <div class="sg">TIRES</div>
       <div class="sr"><div class="l">Warn below<i>A tire turns orange under this pressure</i></div>
@@ -1146,20 +1146,14 @@ applyTop();
 // ---------- Readouts: one big (tap to switch), the other two small up top ----------
 var POINTS = ['N','NE','E','SE','S','SW','W','NW'];
 var gps = { mph: null, bearing: null, ft: null };
-var BASE = ['speed', 'heading', 'elevation'], BASE_NAMES = { speed: 'Speed', heading: 'Heading', elevation: 'Elevation' };
-var baseOn; try { baseOn = JSON.parse(store.get('baseFaces', '["speed","heading","elevation"]')); } catch (e) { baseOn = BASE.slice(); }
-function toggleBase(k) {
-  var i = baseOn.indexOf(k);
-  if (i >= 0) { if (baseOn.length < 2) return; baseOn.splice(i, 1); } else baseOn.push(k);   // at least one stays on
-  store.set('baseFaces', JSON.stringify(baseOn)); drawFaces(); showReadouts();
-}
+var BASE = ['speed', 'heading', 'elevation'];
 var FACES = [['matchup', 'Matchup'], ['standings', 'Standings'], ['lineup', 'My lineup'], ['news', 'Player news'], ['season', 'Season']];   // shown once a Sleeper league is set up
 var faceOn; try { faceOn = JSON.parse(store.get('faces', '["matchup","standings","news","season"]')); } catch (e) { faceOn = ['matchup', 'standings', 'news', 'season']; }
 var heroKind = store.get('hero', 'speed'), lastFace = '';
 function heroList() {
   var mode = homeMode();
   if (mode === 'amb') return ['speed'];
-  var l = mode === 'data' ? ['speed'] : BASE.filter(function (k) { return baseOn.indexOf(k) >= 0; });   // with the map hidden, heading, elevation and tires live in the big readout card instead
+  var l = mode === 'data' ? ['speed'] : BASE.slice();   // with the map hidden, heading, elevation and tires live in the big readout card instead
   if (mode === 'full' && window.tires && tires.available()) l.push('tires');
   if (window.ff && ff.ready()) FACES.forEach(function (f) { if (faceOn.indexOf(f[0]) >= 0) l.push(f[0]); });
   return l;
@@ -1184,10 +1178,6 @@ function toggleFace(k) {
 }
 function drawFaces() {
   var box = $('faces'); box.innerHTML = '';
-  BASE.forEach(function (k) {
-    var b = document.createElement('button'); b.className = 'chip' + (baseOn.indexOf(k) >= 0 ? ' on' : ''); b.textContent = BASE_NAMES[k];
-    b.onclick = function () { toggleBase(k); }; box.appendChild(b);
-  });
   if (window.ff && store.get('ffUser', '')) FACES.forEach(function (f) {
     var b = document.createElement('button'); b.className = 'chip' + (faceOn.indexOf(f[0]) >= 0 ? ' on' : ''); b.textContent = f[1];
     b.onclick = function () { toggleFace(f[0]); }; box.appendChild(b);
