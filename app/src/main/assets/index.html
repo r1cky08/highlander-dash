@@ -1485,7 +1485,10 @@ var online = (function () {
     var u = new Uint8Array(buf), pb = new Pbf(u), feats = [], N = Math.pow(2, Z);
     var lon0 = tx / N * 360 - 180, lat0 = Math.atan(Math.sinh(Math.PI * (1 - 2 * ty / N))) / RAD;
     var ox = lon0 * KX, oy = lat0 * KY, sx = 360 / N / EXT * KX;
-    function latY(py) { return (Math.atan(Math.sinh(Math.PI * (1 - 2 * (ty + py / EXT) / N))) / RAD) * KY - oy; }
+    // Tile rows to world meters through a small lookup table (every 16 units, buffer included), cheaper than atan/sinh for every point.
+    var LUT = new Float64Array(274);
+    for (var li = 0; li < 274; li++) LUT[li] = (Math.atan(Math.sinh(Math.PI * (1 - 2 * (ty + (li * 16 - 128) / EXT) / N))) / RAD) * KY - oy;
+    function latY(py) { var f = Math.max(0, Math.min(272.999, (py + 128) / 16)), i = f | 0; return LUT[i] + (LUT[i + 1] - LUT[i]) * (f - i); }
     while (pb.p < u.length) {
       var tag = pb.v();
       if (tag >> 3 !== 3) { pb.skip(tag & 7); continue; }
@@ -1549,9 +1552,9 @@ var online = (function () {
       (function (key) {
         var p = key.split('_'), url = tpl.replace('{z}', Z).replace('{x}', p[0]).replace('{y}', p[1]);
         fetch(url).then(function (r) { if (!r.ok) throw r.status; return r.arrayBuffer(); }).then(function (b) {
-          var t = null; try { t = decode(b, +p[0], +p[1]); } catch (e) { t = null; console.log('online map tile ' + key + ': ' + (e && e.message)); }
+          var t = null; try { t = decode(b, +p[0], +p[1]); } catch (e) { t = null; }
           put(key, t); okAny = true; setStatus('ok');
-          if (window.map) map.redraw();
+          soon();
         }).catch(function (e) {
           if (e === 404 || e === 410) { store.set('ofmTpl', ''); tpl = ''; tjAt = 0; }   // the weekly tile set moved on: look up the new address
           if (!okAny) setStatus('off');
@@ -1559,6 +1562,8 @@ var online = (function () {
       })(key);
     }
   }
+  var redrawT = null;   // several tiles usually land together: one redraw for the batch
+  function soon() { if (!redrawT) redrawT = setTimeout(function () { redrawT = null; if (window.map) map.redraw(); }, 250); }
   function put(key, t) { cache[key] = t; order.push(key); while (order.length > MAXT) delete cache[order.shift()]; }
   function query(x0, y0, x1, y1) {
     if (!on) return [];
@@ -1757,9 +1762,6 @@ var map = (function () {
   var drawn = null;                           // {x, y, mpp} the sheet was drawn for
   var running = false, api = {};
 
-  var ROAD = { // kind: [width px at 6 m/px, color]
-    1: [7, '#7a8088'], 2: [6, '#6c727a'], 3: [5, '#5d636a'], 4: [4, '#4a4f55'], 5: [3.4, '#3f4348'], 6: [2.2, '#2d3034'], 7: [1.6, '#34373b']
-  };
   // Dark and light map palettes. applyMapTheme swaps them in (Settings, Appearance, Light mode).
   var MP_DARK = { land: '#0e0f11', sky0: '#08080a', water: '#122230', waterLn: '#1a3346', fog1: 'rgba(14,15,17,0)', laneE: '#5b6068', laneM: '#7b8088', routeCase: '#08080a', routeCase2: 'rgba(8,8,10,0.85)', outline: 'rgba(255,255,255,0.1)', arrow: '#ffffff', arrowDot: '#ffffff',
     road: { 1: [7, '#7a8088'], 2: [6, '#6c727a'], 3: [5, '#5d636a'], 4: [4, '#4a4f55'], 5: [3.4, '#3f4348'], 6: [2.2, '#2d3034'], 7: [1.6, '#34373b'] },
@@ -2342,21 +2344,27 @@ var map = (function () {
     if (v && !pins) panTimer = setTimeout(api.recenter, 30000);
   }
   // Two fingers: spread to zoom in, pinch to zoom out, one zoom step each time the gap grows or shrinks by about a third.
-  var touches = {}, pinch = null;
+  var touches = {}, pinch = null, STEP = 1.6;   // about how much one zoom step changes the scale
   function gap() { var k = Object.keys(touches); if (k.length < 2) return 0; var a = touches[k[0]], b = touches[k[1]]; return Math.hypot(a.x - b.x, a.y - b.y); }
   cv.addEventListener('pointerdown', function (e) {
     touches[e.pointerId] = { x: e.clientX, y: e.clientY };
     try { cv.setPointerCapture(e.pointerId); } catch (err) { }
-    if (Object.keys(touches).length >= 2) { drag = null; pinch = { d: gap(), moved: true }; return; }
+    if (Object.keys(touches).length >= 2) {
+      drag = null;
+      var zin = use3d() ? z3 : zi, zmax = use3d() ? DC.length - 1 : ZOOMS.length - 1;
+      pinch = { d: gap(), s: 1, hi: Math.pow(STEP, zin) * 1.15, lo: Math.pow(STEP, -(zmax - zin)) / 1.15 };
+      cv.style.transformOrigin = CARX + 'px ' + CARY + 'px';
+      return;
+    }
     if (!pos) return;
     drag = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
   });
   cv.addEventListener('pointermove', function (e) {
     if (touches[e.pointerId]) { touches[e.pointerId].x = e.clientX; touches[e.pointerId].y = e.clientY; }
-    if (pinch) {
+    if (pinch) {   // the picture just scales under the fingers (cheap); the map is redrawn once, at the new zoom, when they lift
       var g = gap(); if (!g || !pinch.d) return;
-      if (g > pinch.d * 1.35) { api.zoom(-1); pinch.d = g; }
-      else if (g < pinch.d / 1.35) { api.zoom(1); pinch.d = g; }
+      pinch.s = Math.max(pinch.lo, Math.min(pinch.hi, g / pinch.d));
+      cv.style.transform = 'scale(' + pinch.s.toFixed(3) + ')';
       return;
     }
     if (!drag || e.pointerId !== drag.id) return;
@@ -2373,7 +2381,14 @@ var map = (function () {
   });
   function endDrag(e) {
     delete touches[e.pointerId];
-    if (pinch) { if (Object.keys(touches).length < 2) pinch = null; drag = null; return; }   // lifting after a pinch is not a tap
+    if (pinch) {   // lifting after a pinch is not a tap
+      if (Object.keys(touches).length < 2) {
+        var n = Math.round(Math.log(pinch.s) / Math.log(STEP));
+        pinch = null; cv.style.transform = '';
+        if (n) api.zoom(-n);
+      }
+      drag = null; return;
+    }
     var d0 = drag; if (drag && e.pointerId === drag.id) drag = null;
     if (d0 && !d0.moved && pins && pinCb && e.type === 'pointerup' && pos) {   // a tap on a pin chooses it
       var rc = cv.getBoundingClientRect(), tx = (e.clientX - rc.left) / stageScale, ty = (e.clientY - rc.top) / stageScale, cr = -rot * RAD, mpp = ZOOMS[zi], bi = -1, bd = 30;
@@ -3475,7 +3490,7 @@ var ff = (function () {
     cfg.league = id; store.set('ffLeague', id); news = []; newsAt = 0; projKey = ''; season = { k: '', v: [] }; showingSetup = false; msg('');
     refresh(true); render();
   }
-  setInterval(function () { refresh(false); refreshNews(false); }, 5000);
+  setInterval(function () { if (!cfg.user && !cfg.league) return; refresh(false); refreshNews(false); }, 5000);   // nothing to do until a league is set up
   return { refresh: refresh, render: render, ready: ready, face: faceHtml, showSetup: showSetup, saveSetup: saveSetup, refreshNews: refreshNews };
 })();
 function syncFF() { document.body.classList.toggle('hasff', !!store.get('ffUser', '')); drawFaces && drawFaces(); }
