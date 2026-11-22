@@ -4,6 +4,10 @@ A premium, minimal home screen (launcher) for Android car head units, built for 
 
 This is a shared test build. It is offered as-is, with no warranty. It does not change anything on your head unit: it is an app you can uninstall any time.
 
+## Guide
+
+The full guide is in [GUIDE.md](GUIDE.md): how to install and use the dashboard, every setting, tire sensors (with the ones I bought), the radio screen and diagnostic, how it was built with Claude, and how to add what is not in this build.
+
 ## Download
 
 Get the newest APKs from the [Releases page](../../releases/latest):
@@ -22,9 +26,10 @@ On the head unit, open the release page in Chrome, tap the APK, and allow "Insta
 - Tires: assign Bluetooth valve-cap sensors to wheels, low pressure warning, a timing table and a Compare sensors screen with a per-minute log
 - Radio (FYT / Syu head units only): the launcher's own radio screen with saved stations, seek, step, FM and AM. On other units the Radio button opens the unit's own radio app
 - Radio diagnostic: shows what the factory radio exposes, a command tester, and a button that copies the factory radio app files for study
+- Online street map when the unit has internet (OpenFreeMap, OpenStreetMap data): street names, 3D or flat view, pinch to zoom
 - Apps drawer, Phone and Maps buttons (Maps opens Google Maps)
 
-Not included (see the guide for how to add them): offline maps, place search, turn-by-turn navigation, 3D map, live traffic, saved places, and a fantasy football card.
+Not included (see the guide for how to add them): offline maps, place search, turn-by-turn navigation, 3D buildings, live traffic, saved places, and a fantasy football card.
 
 ## Build it yourself
 
