@@ -2,6 +2,9 @@ name: Build APK
 
 on:
   push:
+    paths-ignore:   # guide and README edits do not need a new APK
+      - '**.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
